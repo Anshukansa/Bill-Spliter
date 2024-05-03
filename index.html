@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bill Split Calculator</title>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    >
+    <style>
+        body {
+            font-family: 'Helvetica', sans-serif;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.1);
+        }
+        .person-group {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+        }
+        .results h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .radio-group {
+            display: inline-block;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bill Split Calculator</h1>
+    <div class="container">
+        <div class="form-group">
+            <label for="start-date">Start Date:</label>
+            <input type="date" class="form-control" id="start-date">
+        </div>
+        <div class="form-group">
+            <label for="end-date">End Date:</label>
+            <input type="date" class="form-control" id="end-date">
+        </div>
+        <div class="form-group">
+            <label for="total-amount">Total Bill Amount ($):</label>
+            <input type="number" class="form-control" id="total-amount" placeholder="e.g., 1000">
+        </div>
+        <div class="form-group">
+            <label for="total-people">Total Number of People:</label>
+            <input type="number" class="form-control" id="total-people" onchange="addPersonForms()">
+        </div>
+
+        <div id="people-container">
+            <!-- Dynamic content for person details will be inserted here -->
+        </div>
+
+        <div class="error" id="error-message"></div>
+
+        <button class="btn btn-primary" onclick="calculateShares()">Calculate</button>
+
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        function calculateTotalDays(startDate, endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        }
+
+        function addPersonForms() {
+            const totalPeople = parseInt(document.getElementById("total-people").value, 10);
+            const peopleContainer = document.getElementById("people-container");
+
+            // Clear existing content before adding new forms
+            peopleContainer.innerHTML = '';
+
+            for (let i = 0; i < totalPeople; i++) {
+                const personGroup = document.createElement("div");
+                personGroup.className = "person-group";
+
+                personGroup.innerHTML = `
+                    <div class="form-group">
+                        <label for="name-${i}">Name of Person ${i + 1}:</label>
+                        <input type="text" class="form-control" id="name-${i}" placeholder="Enter name">
+                    </div>
+                    <div class="form-group">
+                        <label for="start-person-${i}">Start Date for Person ${i + 1}:</label>
+                        <div>
+                            <input type="date" class="form-control" id="start-person-${i}">
+                            <div class="radio-group">
+                                <input type="checkbox" id="from-start-${i}" onchange="setStartDate(${i}, true)">
+                                <label for="from-start-${i}">From Start</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="end-person-${i}">End Date for Person ${i + 1}:</label>
+                        <div>
+                            <input type="date" class="form-control" id="end-person-${i}">
+                            <div class="radio-group">
+                                <input type="checkbox" id="till-end-${i}" onchange="setEndDate(${i}, true)">
+                                <label for="till-end-${i}">Till End</label>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                peopleContainer.appendChild(personGroup);
+            }
+        }
+
+        function setStartDate(personIndex, fromStart) {
+            const startDate = document.getElementById("start-date").value;
+            if (fromStart) {
+                document.getElementById(`start-person-${personIndex}`).value = startDate;
+            }
+        }
+
+        function setEndDate(personIndex, tillEnd) {
+            const endDate = document.getElementById("end-date").value;
+            if (tillEnd) {
+                document.getElementById(`end-person-${personIndex}`).value = endDate;
+            }
+        }
+
+        function validateInputs() {
+            const errorMessage = document.getElementById("error-message");
+            errorMessage.innerHTML = ''; // Clear previous error messages
+
+            const startDate = document.getElementById("start-date").value;
+            const endDate = document.getElementById("end-date").value;
+            const totalAmount = parseFloat(document.getElementById("total-amount").value);
+            const totalPeople = parseInt(document.getElementById("total-people").value, 10);
+
+            if (!startDate || !endDate) {
+                errorMessage.innerHTML = "Please enter valid start and end dates.";
+                return false;
+            }
+
+            if (isNaN(totalAmount) || totalAmount <= 0) {
+                errorMessage.innerHTML = "Please enter a valid total bill amount.";
+                return false;
+            }
+
+            if (isNaN(totalPeople) || totalPeople <= 0) {
+                errorMessage.innerHTML = "Please enter a valid total number of people.";
+                return false;
+            }
+
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+
+            if (end < start) {
+                errorMessage.innerHTML = "End date cannot be earlier than the start date.";
+                return false;
+            }
+
+            return true;
+        }
+
+        function calculateShares() {
+            if (!validateInputs()) {
+                return; // If validation fails, do not proceed
+            }
+
+            const startDate = document.getElementById("start-date").value;
+            const endDate = document.getElementById("end-date").value;
+            const totalAmount = parseFloat(document.getElementById("total-amount").value);
+            const totalPeople = parseInt(document.getElementById("total-people").value, 10);
+
+            const totalDays = calculateTotalDays(startDate, endDate);
+
+            let personDetails = [];
+            for (let i = 0; i < totalPeople; i++) {
+                const name = document.getElementById(`name-${i}`).value;
+                const start = document.getElementById(`start-person-${i}`).value;
+                const end = document.getElementById(`end-person-${i}`).value;
+
+                if (!name) {
+                    document.getElementById("error-message").innerHTML = `Please enter the name for Person ${i + 1}.`;
+                    return;
+                }
+
+                const startPerson = new Date(start);
+                const endPerson = new Date(end);
+
+                if (endPerson < startPerson) {
+                    document.getElementById("error-message").innerHTML = `End date for ${name} cannot be earlier than their start date.`;
+                    return;
+                }
+
+                const days = calculateTotalDays(start, end);
+
+                if (days > totalDays) {
+                    document.getElementById("error-message").innerHTML = `${name}'s individual days cannot exceed the total days of the period.`;
+                    return;
+                }
+
+                personDetails.push({ name, days });
+            }
+
+            const totalPersonDays = personDetails.reduce((acc, curr) => acc + curr.days, 0);
+            const percentageShares = personDetails.map(
+                (p) => (p.days / totalPersonDays) * 100
+            );
+
+            const personShares = percentageShares.map(
+                (perc) => (perc / 100) * totalAmount
+            );
+
+            let results = `<h2>Bill Distribution:</h2>`;
+            personDetails.forEach((p, index) => {
+                results += `<p>${p.name}'s share: $${personShares[index].toFixed(2)} (Lived for ${p.days} days)</p>`;
+            });
+
+            document.getElementById("results").innerHTML = results;
+        }
+    </script>
+    <script
+      src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
+    ></script>
+    <script
+      src="https://code.jquery.com/jquery-3.5.1.min.js"
+    ></script>
+</body>
+</html>
